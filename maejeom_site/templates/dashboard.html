@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>대시보드 - 매점 시뮬레이터</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap & DataTables CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+<body class="bg-white">
+  <div class="container py-4">
+    <h2 class="mb-3">시뮬레이션 결과 대시보드</h2>
+
+    <div class="mb-3">
+      <button id="refreshBtn" class="btn btn-primary me-2">데이터 새로고침</button>
+      <a href="/download/simulation" class="btn btn-outline-secondary me-2">CSV 다운로드</a>
+      <a href="/" class="btn btn-light">메인으로</a>
+    </div>
+
+    <h4>제품별 가격 추이</h4>
+    <canvas id="priceChart" height="120"></canvas>
+
+    <h4 class="mt-4">일별 판매량 / 매출</h4>
+    <table id="salesTable" class="display" style="width:100%">
+      <thead>
+        <tr>
+          <th>day</th>
+          <th>product</th>
+          <th>units_sold</th>
+          <th>revenue</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- JS 라이브러리들 -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+// 데이터 불러와서 차트 + 테이블 그리는 함수
+async function loadData(table) {
+  const res = await fetch('/api/sim-data');
+  const data = await res.json();
+
+  if (!Array.isArray(data) || data.length === 0) {
+    alert("먼저 메인 화면에서 시뮬레이션을 실행해주세요.");
+    return;
+  }
+
+  // --- 가격 차트용 데이터 만들기 ---
+  const products = [...new Set(data.map(d => d.product))];
+  const days = [...new Set(data.map(d => d.day))].sort((a, b) => a - b);
+
+  const datasets = products.map(p => {
+    const points = days.map(day => {
+      const rec = data.find(d => d.product === p && d.day === day);
+      return rec ? rec.price_end : null;
+    });
+    return {
+      label: p,
+      data: points,
+      tension: 0.2
+    };
+  });
+
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if (window.priceChart) window.priceChart.destroy();
+  window.priceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+
+  // --- 판매량 테이블 채우기 ---
+  table.clear();
+  data.forEach(row => {
+    table.row.add([
+      row.day,
+      row.product,
+      row.units_sold,
+      row.revenue
+    ]);
+  });
+  table.draw();
+}
+
+$(document).ready(function () {
+  const table = $('#salesTable').DataTable();
+  loadData(table);
+
+  $('#refreshBtn').on('click', function () {
+    loadData(table);
+  });
+});
+</script>
+</body>
+</html>

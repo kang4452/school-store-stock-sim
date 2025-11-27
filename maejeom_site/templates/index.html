@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>학교 매점 모의투자</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap & DataTables -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: #f1f3f6;
+    }
+    .navbar-custom {
+      background: #003b8e;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .navbar-custom .navbar-brand {
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .navbar-custom .navbar-text {
+      color: #d9e4ff;
+      font-size: 0.9rem;
+    }
+    .card-header {
+      background: #eef3ff;
+      font-weight: 600;
+      border-bottom: 1px solid #d4ddf4;
+    }
+    .table thead {
+      background: #e2ebff;
+    }
+    .table thead th {
+      border-bottom: 1px solid #c7d4f5 !important;
+    }
+    .summary-card h3 {
+      font-size: 1.8rem;
+    }
+    .badge-day {
+      background-color: #0052cc;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">KRX 스타일 · 학교 매점 모의투자</a>
+    <span class="navbar-text ms-auto">
+      모의투자 · 교육용 시뮬레이션
+    </span>
+  </div>
+</nav>
+
+<div class="container my-4">
+
+  <!-- 상단 요약 -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <div class="card summary-card">
+        <div class="card-header">현재 일자</div>
+        <div class="card-body">
+          <h3 id="dayText" class="mb-1">-일차</h3>
+          <span class="badge badge-day text-bg-primary" id="eventCodeBadge">-</span>
+          <div class="text-muted small mt-1">총 30일 중</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card summary-card">
+        <div class="card-header">전체 자산</div>
+        <div class="card-body">
+          <h3 id="totalValueText" class="mb-0">0 원</h3>
+          <div class="text-muted small mt-1">현금 + 평가손익 포함</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card summary-card">
+        <div class="card-header">현금</div>
+        <div class="card-body">
+          <h3 id="cashText" class="mb-0">0 원</h3>
+          <div class="text-muted small mt-1">추가 매수 가능 금액</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 가운데: 종목 매수/매도 -->
+  <div class="row">
+    <div class="col-lg-8 mb-3">
+      <div class="card">
+        <div class="card-header">종목 주문 (매수 / 매도)</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0 align-middle text-center">
+              <thead>
+                <tr>
+                  <th>종목명</th>
+                  <th>현재가</th>
+                  <th>보유수량</th>
+                  <th>매수 수량</th>
+                  <th>매수</th>
+                  <th>매도 수량</th>
+                  <th>매도</th>
+                </tr>
+              </thead>
+              <tbody id="productRows">
+                <!-- JS로 채움 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <button id="resetBtn" class="btn btn-outline-secondary btn-sm">초기화(처음부터)</button>
+          <button id="nextDayBtn" class="btn btn-primary btn-sm">다음 날 ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: 오늘 이벤트 안내 -->
+    <div class="col-lg-4 mb-3">
+      <div class="card h-100">
+        <div class="card-header">오늘의 이벤트 안내</div>
+        <div class="card-body">
+          <h6 id="eventTitle" class="fw-bold mb-2">-</h6>
+          <p id="eventDesc" class="small text-muted mb-0">
+            -
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단: 주문 내역 -->
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">주문 내역</div>
+        <div class="card-body">
+          <table id="historyTable" class="display" style="width:100%">
+            <thead>
+              <tr>
+                <th>일자</th>
+                <th>종목</th>
+                <th>구분</th>
+                <th>수량</th>
+                <th>체결가</th>
+                <th>거래금액</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <small class="text-muted">※ 본 프로그램은 교육용 모의투자 시스템이며, 실제 거래가 아닙니다.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 이벤트 팝업(모달) -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">오늘의 이벤트</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      </div>
+      <div class="modal-body">
+        <h6 id="modalEventTitle" class="fw-bold"></h6>
+        <p id="modalEventDesc" class="small mb-0"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+let historyTable = null;
+let firstLoadDone = false;
+
+function showEventPopup(event) {
+  if (!event) return;
+  document.getElementById("modalEventTitle").textContent = event.title || "";
+  document.getElementById("modalEventDesc").textContent = event.desc || "";
+  const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+  modal.show();
+}
+
+// 상태 불러오기 & 화면 업데이트
+async function loadState(showEventOnLoad = false) {
+  const res = await fetch("/api/state");
+  const data = await res.json();
+
+  // 상단 카드
+  document.getElementById("dayText").textContent = `${data.day} 일차 / ${data.max_day}일`;
+  document.getElementById("cashText").textContent = data.cash.toFixed(0) + " 원";
+  document.getElementById("totalValueText").textContent = data.total_value.toFixed(0) + " 원";
+
+  // 이벤트 표시
+  if (data.event) {
+    document.getElementById("eventCodeBadge").textContent = data.event.code || "-";
+    document.getElementById("eventTitle").textContent = data.event.title || "-";
+    document.getElementById("eventDesc").textContent = data.event.desc || "-";
+
+    if (showEventOnLoad) {
+      showEventPopup(data.event);
+    }
+  }
+
+  // 종목 테이블
+  const tbody = document.getElementById("productRows");
+  tbody.innerHTML = "";
+  data.today_prices.forEach(row => {
+    const p = row.product;
+    const price = row.price;
+    const holding = data.holdings[p] || 0;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p}</td>
+      <td>${price.toFixed(2)}</td>
+      <td>${holding}</td>
+      <td><input type="number" min="1" class="form-control form-control-sm" id="buyQty-${p}" value="1"></td>
+      <td><button class="btn btn-sm btn-danger" data-product="${p}" data-side="buy">매수</button></td>
+      <td><input type="number" min="1" class="form-control form-control-sm" id="sellQty-${p}" value="1"></td>
+      <td><button class="btn btn-sm btn-outline-primary" data-product="${p}" data-side="sell">매도</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 버튼 이벤트 연결
+  tbody.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const product = btn.getAttribute("data-product");
+      const side = btn.getAttribute("data-side");
+      const qtyInputId = side === "buy" ? `buyQty-${product}` : `sellQty-${product}`;
+      const qty = parseInt(document.getElementById(qtyInputId).value || "0", 10);
+
+      if (!qty || qty <= 0) {
+        alert("수량을 1 이상 입력해 주세요.");
+        return;
+      }
+
+      const res = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product, side, qty })
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        alert(result.msg || "주문 처리 중 오류가 발생했습니다.");
+      }
+      await loadState(false);
+    });
+  });
+
+  // 주문 내역 테이블
+  if (!historyTable) {
+    historyTable = $("#historyTable").DataTable();
+  }
+  historyTable.clear();
+  (data.history || []).forEach(h => {
+    historyTable.row.add([
+      h.day,
+      h.product,
+      h.side === "buy" ? "매수" : "매도",
+      h.qty,
+      h.price.toFixed(2),
+      h.amount.toFixed(0)
+    ]);
+  });
+  historyTable.draw();
+}
+
+// 다음날로 이동
+async function goNextDay() {
+  const res = await fetch("/api/next-day", { method: "POST" });
+  const data = await res.json();
+  if (!data.ok) {
+    alert(data.msg || "더 이상 진행할 수 없습니다.");
+    return;
+  }
+  if (data.event) {
+    showEventPopup(data.event);
+  }
+  await loadState(false);
+}
+
+// 초기화
+async function resetGame() {
+  if (!confirm("정말 처음부터 다시 시작할까요?")) return;
+  const res = await fetch("/api/reset-game", { method: "POST" });
+  const data = await res.json();
+  if (data.ok) {
+    await loadState(true);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("nextDayBtn").addEventListener("click", goNextDay);
+  document.getElementById("resetBtn").addEventListener("click", resetGame);
+  // 첫 로딩 시 1일차 이벤트 팝업 띄우기
+  loadState(true);
+});
+</script>
+
+</body>
+</html>
